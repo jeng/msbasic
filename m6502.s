@@ -1,9 +1,8 @@
-; These startup and serial I/O routines are a modified version
-; of G. Searle's from 2013.
+; These startup and serial I/O routines are a modified version of G. Searle's
+; from 2013. They have been altered to work with the Rockwell R6551P.
 ;
-; They been altered to work with the R6551P
-;
-; I've also stumped out the necessary Kernel functions to get things running.
+; I've also added stubs for the necessary Kernel functions to get things
+; running.
 ;
 ; This will run on a 6502 machine similar to the breadboard 6502 created by Ben
 ; Eater.  It expects:
@@ -14,11 +13,10 @@
 ;  ROM: 8000 - FFFFF
 ;
 ;
-; In the I/O memory block the Rockwell R65C51P1 needs to be at address $5000.
+; In the I/O memory block, the Rockwell R65C51P1 needs to be at address $5000.
 ; I've tested the following chips R6551AP, R65C51P2, R65C51P1 and the
-; W65C51N6TPG.  The WDC version ; will need a different MONCOUT routine due to
+; W65C51N6TPG.  The WDC version will need a different MONCOUT routine due to
 ; the hardward bug.
-;
 ;
 ; -Jeremy English jhe@jeremyenglish.org
 ;
@@ -34,35 +32,36 @@ ACIAControl := ACIA+3
 
 m6502_main:
 
-    ;; jhe: I don't have the irq line connected off of the uart.  So interrupts
-    ;;      are turned off.  And you will not be able to reset from basic.
+    ;; jhe: I don't have the uart's irq line connected.  Interrupts
+    ;; are turned off and you will not be able to reset from the terminal.
+
     lda #$1f            ; n-8-1 19200 baud
     sta ACIAControl
     lda #$0B            ; No parity, no echo, no interrupts.
     sta ACIACmd
-    jsr COLD_START       ; Let's get started
+    jsr COLD_START      ; Let's get started
 
 TO_UPPER:
-    cmp #$61
-    bcs TU_CHK_Z
-    rts
+    cmp #$61            ; >= 'a'
+    bcs TU_CHK_Z        ; check if also <= 'z'
+    rts                 ; if not return 
 TU_CHK_Z:
-    cmp #$7b
-    bcc TU_ADJ_CASE
-    rts
+    cmp #$7b            ; <= 'z' (actual < 'z'+1)
+    bcc TU_ADJ_CASE     ; if so change to upper case
+    rts                 ; if not return
 TU_ADJ_CASE:
-    sec
-    sbc #$20
-    rts
+    sec                 ; set the carry for subtraction
+    sbc #$20            ; subtract to get upper case version
+    rts                 ; we're done
 
 MONCOUT:
-	PHA
+	PHA                 ; save A
 SerialOutWait:
-	LDA	ACIAStatus      ;get status
-    and #$10            ;mask transmit buffer status flag
-	beq	SerialOutWait   ;loop until we've sent the char
-	PLA                 ;restore A
-	STA	ACIAData        ;send it
+	LDA	ACIAStatus      ; get status
+    and #$10            ; mask transmit buffer status flag
+	beq	SerialOutWait   ; loop until we've sent the char
+	PLA                 ; restore A
+	STA	ACIAData        ; send it
 	RTS
 
 MONRDKEY:
